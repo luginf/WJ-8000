@@ -1,6 +1,5 @@
 #include "PluginEditor.h"
 #include "MIDI/DW8000SysEx.h"
-#include "DW8000ImageData.h"
 
 // ─────────────────────────────────────────────────────────────────────────
 // Layout constants (all in pixels)
@@ -26,151 +25,6 @@ static constexpr int R3Y  = R2Y + CH + GAP + HDR;   // 406
 static constexpr int KBY  = R3Y + CH + GAP;         // 568  keyboard top
 static constexpr int KBH  = 120;                     // keyboard height (photo needs more room)
 static constexpr int BARY = KBY + KBH + 8;          // 664  title/button bar
-
-// ─────────────────────────────────────────────────────────────────────────
-// MiniKeyboard
-// ─────────────────────────────────────────────────────────────────────────
-bool MiniKeyboard::isBlackKey(int note) noexcept
-{
-    int s = note % 12;
-    return s==1 || s==3 || s==6 || s==8 || s==10;
-}
-
-// ── Calibration constants (fractions of component size, tuned to KEYS.png) ──
-//   KBX0  / KBX1  = left / right edge of the key array inside the frame
-//   KBY0  / KBY1  = top  / bottom edge of white keys
-//   BKY1           = bottom edge of black keys
-// Adjust these if the blue overlay doesn't align perfectly.
-static constexpr float KBX0  = 0.013f;   // left  frame fraction
-static constexpr float KBX1  = 0.987f;   // right frame fraction
-static constexpr float KBY0  = 0.095f;   // top of keys
-static constexpr float KBY1  = 0.910f;   // bottom of white keys
-static constexpr float BKY1  = 0.095f + (0.910f - 0.095f) * 0.615f; // black key bottom
-
-void MiniKeyboard::paint(juce::Graphics& g)
-{
-    // ── Load image (cached after first call) ─────────────────────────────
-    static const juce::Image keysImg = juce::ImageCache::getFromMemory(
-        DW8000ImageData::KEYS_png, DW8000ImageData::KEYS_pngSize);
-
-    auto b = getLocalBounds().toFloat();
-
-    // ── Draw the keyboard photo scaled to fill the component ─────────────
-    g.drawImage(keysImg, b, juce::RectanglePlacement::stretchToFit);
-
-    // ── Compute key geometry in component coordinates ─────────────────────
-    float kx0 = b.getX() + KBX0 * b.getWidth();
-    float kx1 = b.getX() + KBX1 * b.getWidth();
-    float ky0 = b.getY() + KBY0 * b.getHeight();
-    float ky1 = b.getY() + KBY1 * b.getHeight();
-    float bky1= b.getY() + BKY1 * b.getHeight();
-
-    float kw  = kx1 - kx0;
-    float wkw = kw / (float)NUM_WHITE;
-    float wkh = ky1 - ky0;
-    float bkw = wkw * 0.56f;
-    float bkh = bky1 - ky0;
-
-    // Black key x-centres within an octave, in white-key units from C
-    static const float kBkX[5]  = { 0.63f, 1.65f, 3.63f, 4.65f, 5.63f };
-    static const int   kS2B[12] = { -1,0,-1,1,-1,-1,2,-1,3,-1,4,-1 };
-
-    // ── Blue overlays on active white keys ───────────────────────────────
-    int wi = 0;
-    for (int note = FIRST_NOTE; note <= LAST_NOTE; ++note)
-    {
-        if (isBlackKey(note)) { continue; }
-
-        if (proc_.isNoteActive(note))
-        {
-            float x = kx0 + wi * wkw;
-            juce::Rectangle<float> kr(x + 1.0f, ky0, wkw - 2.0f, wkh);
-
-            // Translucent blue wash preserving the photo texture underneath
-            g.setColour(juce::Colour(0xFF3A7FFF).withAlpha(0.52f));
-            g.fillRect(kr);
-
-            // Brighter top band (key-press sheen)
-            g.setColour(juce::Colour(0xFF88BBFF).withAlpha(0.38f));
-            g.fillRect(kr.withHeight(wkh * 0.28f));
-        }
-        ++wi;
-    }
-
-    // ── Blue overlays on active black keys ───────────────────────────────
-    for (int note = FIRST_NOTE; note <= LAST_NOTE; ++note)
-    {
-        if (!isBlackKey(note)) continue;
-
-        if (proc_.isNoteActive(note))
-        {
-            int   rel  = note - FIRST_NOTE;
-            int   oct  = rel / 12;
-            int   semi = rel % 12;
-            float cx   = kx0 + (oct * 7.0f + kBkX[kS2B[semi]]) * wkw;
-            float bx   = cx - bkw * 0.5f;
-
-            juce::Rectangle<float> kr(bx, ky0, bkw, bkh);
-
-            g.setColour(juce::Colour(0xFF1A5FFF).withAlpha(0.75f));
-            g.fillRect(kr);
-
-            // Top highlight
-            g.setColour(juce::Colour(0xFF66AAFF).withAlpha(0.45f));
-            g.fillRect(kr.withHeight(bkh * 0.30f));
-        }
-    }
-}
-
-int MiniKeyboard::noteAt(juce::Point<float> p) const
-{
-    auto b   = getLocalBounds().toFloat();
-    float kx0 = b.getX() + KBX0 * b.getWidth();
-    float kx1 = b.getX() + KBX1 * b.getWidth();
-    float ky0 = b.getY() + KBY0 * b.getHeight();
-    float ky1 = b.getY() + KBY1 * b.getHeight();
-    float bky1= b.getY() + BKY1 * b.getHeight();
-    float wkw = (kx1 - kx0) / (float)NUM_WHITE;
-    float bkw = wkw * 0.56f;
-
-    if (p.x < kx0 || p.x >= kx1 || p.y < ky0 || p.y > ky1) return -1;
-
-    static const float kBkX[5]  = { 0.63f, 1.65f, 3.63f, 4.65f, 5.63f };
-    static const int   kS2B[12] = { -1,0,-1,1,-1,-1,2,-1,3,-1,4,-1 };
-
-    // Black keys sit on top of the white ones: test them first.
-    if (p.y <= bky1)
-    {
-        for (int note = FIRST_NOTE; note <= LAST_NOTE; ++note)
-        {
-            if (!isBlackKey(note)) continue;
-            int   rel = note - FIRST_NOTE;
-            float cx  = kx0 + ((rel / 12) * 7.0f + kBkX[kS2B[rel % 12]]) * wkw;
-            if (std::abs(p.x - cx) <= bkw * 0.5f) return note;
-        }
-    }
-
-    int wi = (int)((p.x - kx0) / wkw), idx = 0;
-    for (int note = FIRST_NOTE; note <= LAST_NOTE; ++note)
-    {
-        if (isBlackKey(note)) continue;
-        if (idx++ == wi) return note;
-    }
-    return -1;
-}
-
-void MiniKeyboard::playNote(int note)
-{
-    if (note == heldNote_) return;
-    auto& ks = proc_.getKeyboardState();
-    if (heldNote_ >= 0) ks.noteOff(1, heldNote_, 0.0f);
-    heldNote_ = note;
-    if (note >= 0) ks.noteOn(1, note, 0.8f);
-}
-
-void MiniKeyboard::mouseDown(const juce::MouseEvent& e) { playNote(noteAt(e.position)); }
-void MiniKeyboard::mouseDrag(const juce::MouseEvent& e) { playNote(noteAt(e.position)); }
-void MiniKeyboard::mouseUp  (const juce::MouseEvent&)   { playNote(-1); }
 
 // ─────────────────────────────────────────────────────────────────────────
 // PresetDisplay  — 2-digit red 7-segment LCD
@@ -704,6 +558,22 @@ DW8000Editor::DW8000Editor(DW8000Processor& p)
 
     startTimerHz(20);   // poll key assign param 20×/sec to stay in sync
 
+    // Keep the keyboard focus on the editor whatever control is clicked, so that the PC
+    // keyboard keeps playing notes (there is no text to type in this plug-in).
+    setWantsKeyboardFocus(true);
+    std::function<void(juce::Component&)> noFocus = [&noFocus](juce::Component& c)
+    {
+        for (auto* child : c.getChildren())
+        {
+            child->setWantsKeyboardFocus(false);
+            child->setMouseClickGrabsKeyboardFocus(false);
+            noFocus(*child);
+        }
+    };
+    noFocus(*this);
+    keyboard_.setWantsKeyboardFocus(false);
+    keyboard_.setMouseClickGrabsKeyboardFocus(false);
+
     setSize(1210, BARY + 44);
 }
 
@@ -909,6 +779,17 @@ void DW8000Editor::resized()
 // ─────────────────────────────────────────────────────────────────────────
 // Destructor
 // ─────────────────────────────────────────────────────────────────────────
+bool DW8000Editor::keyStateChanged(bool isKeyDown) { return keyboard_.keyStateChanged(isKeyDown); }
+
+void DW8000Editor::focusLost(juce::Component::FocusChangeType t) { keyboard_.focusLost(t); }
+
+void DW8000Editor::parentHierarchyChanged()
+{
+    if (isShowing())
+        juce::MessageManager::callAsync([safe = juce::Component::SafePointer<DW8000Editor>(this)]
+                                        { if (safe != nullptr) safe->grabKeyboardFocus(); });
+}
+
 DW8000Editor::~DW8000Editor()
 {
     stopTimer();

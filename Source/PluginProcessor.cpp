@@ -383,6 +383,11 @@ void DW8000Processor::getStateInformation(juce::MemoryBlock& dest)
     std::unique_ptr<juce::XmlElement> xml(state.createXml());
 
     // Embed the 64-preset bank as a child element
+    xml->setAttribute("kbPcInput",    keyboardSettings.pcInput);
+    xml->setAttribute("kbPcLayout",   keyboardSettings.pcLayout);
+    xml->setAttribute("kbVelocity",   keyboardSettings.velocity);
+    xml->setAttribute("kbNumOctaves", keyboardSettings.numOctaves);
+
     auto* bankEl = xml->createNewChildElement("PresetBank");
     bankEl->setAttribute("currentPreset", currentPreset_);
 
@@ -412,6 +417,11 @@ void DW8000Processor::setStateInformation(const void* data, int sizeInBytes)
         return;
 
     apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
+
+    keyboardSettings.pcInput    = xmlState->getBoolAttribute("kbPcInput", false);
+    keyboardSettings.pcLayout   = juce::jlimit(0, 1,   xmlState->getIntAttribute("kbPcLayout", 0));
+    keyboardSettings.velocity   = juce::jlimit(1, 127, xmlState->getIntAttribute("kbVelocity", 100));
+    keyboardSettings.numOctaves = juce::jlimit(0, 5,   xmlState->getIntAttribute("kbNumOctaves", 5));
 
     // Restore preset bank
     if (auto* bankEl = xmlState->getChildByName("PresetBank"))

@@ -67,6 +67,15 @@ public:
     // MIDI input at the start of processBlock).
     juce::MidiKeyboardState& getKeyboardState() { return keyboardState_; }
 
+    // On-screen keyboard settings, saved with the plugin state.
+    struct KeyboardSettings
+    {
+        bool pcInput    = false;  // tracker-style PC keyboard input
+        int  pcLayout   = 0;      // 0 = QWERTY, 1 = AZERTY
+        int  velocity   = 100;    // 1-127
+        int  numOctaves = 5;      // 0 = resizable, 1-5
+    } keyboardSettings;
+
     // Expose engine for editor inspection
     DW8000Engine& getEngine() { return engine_; }
 

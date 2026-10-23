@@ -2,6 +2,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "PluginProcessor.h"
+#include "UI/WJKeyboard.h"
 
 using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
 
@@ -16,31 +17,6 @@ public:
                           juce::Slider::SliderStyle, juce::Slider&) override;
 
     void drawLabel(juce::Graphics&, juce::Label&) override;
-};
-
-// ─── Vintage piano keyboard display ──────────────────────────────────────
-// C2 (MIDI 36) to C7 (MIDI 96) = 61 keys, 36 white keys.
-// Active notes light up in blue; reads proc_.isNoteActive() from timerCallback.
-class MiniKeyboard : public juce::Component
-{
-public:
-    static constexpr int FIRST_NOTE = 36;  // C2
-    static constexpr int LAST_NOTE  = 96;  // C7
-    static constexpr int NUM_WHITE  = 36;  // 5 octaves × 7 + 1
-
-    explicit MiniKeyboard(DW8000Processor& proc) : proc_(proc) {}
-    void paint(juce::Graphics&) override;
-    void mouseDown(const juce::MouseEvent&) override;
-    void mouseDrag(const juce::MouseEvent&) override;
-    void mouseUp(const juce::MouseEvent&) override;
-
-private:
-    DW8000Processor& proc_;
-    int heldNote_ = -1;
-    int noteAt(juce::Point<float>) const;
-    void playNote(int note);
-    static bool isBlackKey(int note) noexcept;
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MiniKeyboard)
 };
 
 // ─── Red 7-segment LCD — shows current preset "11"–"88" ──────────────────
@@ -89,6 +65,12 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
     void timerCallback() override;
+
+    // The PC keyboard plays notes as long as the window has the focus: no control here
+    // takes the keyboard focus, so the key events always end up on this editor.
+    bool keyStateChanged(bool isKeyDown) override;
+    void focusLost(juce::Component::FocusChangeType) override;
+    void parentHierarchyChanged() override;
 
     // FileDragAndDropTarget
     bool isInterestedInFileDrag(const juce::StringArray&) override;
@@ -163,7 +145,7 @@ private:
     juce::TextButton btnImport { "Import SYX" };
     juce::TextButton btnPanic  { "PANIC" };
 
-    MiniKeyboard keyboard_;
+    WJKeyboard keyboard_;
 
     void setKeyAssignMode(int mode);   // 0-3, updates param + button states
     void updateKeyAssignButtons();     // reads param, refreshes button look

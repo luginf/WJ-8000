@@ -22,14 +22,6 @@ juce_add_binary_data(DW8000Factory
         "Resources/Factory/FactoryBank.syx"
 )
 
-# ── Image binary data ────────────────────────────────────────────────────────
-juce_add_binary_data(DW8000Images
-    HEADER_NAME "DW8000ImageData.h"
-    NAMESPACE   DW8000ImageData
-    SOURCES
-        "Resources/Images/KEYS.png"
-)
-
 # ── Wavetable binary data ────────────────────────────────────────────────────
 juce_add_binary_data(DW8000Wavetables
     HEADER_NAME "DW8000WavetableData.h"
@@ -77,6 +69,8 @@ target_sources(DW8000 PRIVATE
     Source/PluginProcessor.h
     Source/PluginEditor.cpp
     Source/PluginEditor.h
+    Source/UI/WJKeyboard.cpp
+    Source/UI/WJKeyboard.h
 
     Source/Synth/DW8000Patch.cpp
     Source/Synth/DW8000Patch.h
@@ -106,11 +100,16 @@ target_sources(DW8000 PRIVATE
     Source/MIDI/DW8000SysEx.h
 )
 
+# ── Standalone app: native OS title bar, Options button at the top-right ────
+if(TARGET DW8000_Standalone)
+    target_sources(DW8000_Standalone PRIVATE Source/StandaloneApp.cpp)
+    target_compile_definitions(DW8000_Standalone PRIVATE JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1)
+endif()
+
 # ── JUCE module dependencies ─────────────────────────────────────────────────
 target_link_libraries(DW8000
     PRIVATE
         DW8000Wavetables
-        DW8000Images
         DW8000Factory
         juce::juce_audio_basics
         juce::juce_audio_devices
