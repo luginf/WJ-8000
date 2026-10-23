@@ -122,6 +122,56 @@ void MiniKeyboard::paint(juce::Graphics& g)
     }
 }
 
+int MiniKeyboard::noteAt(juce::Point<float> p) const
+{
+    auto b   = getLocalBounds().toFloat();
+    float kx0 = b.getX() + KBX0 * b.getWidth();
+    float kx1 = b.getX() + KBX1 * b.getWidth();
+    float ky0 = b.getY() + KBY0 * b.getHeight();
+    float ky1 = b.getY() + KBY1 * b.getHeight();
+    float bky1= b.getY() + BKY1 * b.getHeight();
+    float wkw = (kx1 - kx0) / (float)NUM_WHITE;
+    float bkw = wkw * 0.56f;
+
+    if (p.x < kx0 || p.x >= kx1 || p.y < ky0 || p.y > ky1) return -1;
+
+    static const float kBkX[5]  = { 0.63f, 1.65f, 3.63f, 4.65f, 5.63f };
+    static const int   kS2B[12] = { -1,0,-1,1,-1,-1,2,-1,3,-1,4,-1 };
+
+    // Black keys sit on top of the white ones: test them first.
+    if (p.y <= bky1)
+    {
+        for (int note = FIRST_NOTE; note <= LAST_NOTE; ++note)
+        {
+            if (!isBlackKey(note)) continue;
+            int   rel = note - FIRST_NOTE;
+            float cx  = kx0 + ((rel / 12) * 7.0f + kBkX[kS2B[rel % 12]]) * wkw;
+            if (std::abs(p.x - cx) <= bkw * 0.5f) return note;
+        }
+    }
+
+    int wi = (int)((p.x - kx0) / wkw), idx = 0;
+    for (int note = FIRST_NOTE; note <= LAST_NOTE; ++note)
+    {
+        if (isBlackKey(note)) continue;
+        if (idx++ == wi) return note;
+    }
+    return -1;
+}
+
+void MiniKeyboard::playNote(int note)
+{
+    if (note == heldNote_) return;
+    auto& ks = proc_.getKeyboardState();
+    if (heldNote_ >= 0) ks.noteOff(1, heldNote_, 0.0f);
+    heldNote_ = note;
+    if (note >= 0) ks.noteOn(1, note, 0.8f);
+}
+
+void MiniKeyboard::mouseDown(const juce::MouseEvent& e) { playNote(noteAt(e.position)); }
+void MiniKeyboard::mouseDrag(const juce::MouseEvent& e) { playNote(noteAt(e.position)); }
+void MiniKeyboard::mouseUp  (const juce::MouseEvent&)   { playNote(-1); }
+
 // ─────────────────────────────────────────────────────────────────────────
 // PresetDisplay  — 2-digit red 7-segment LCD
 // ─────────────────────────────────────────────────────────────────────────

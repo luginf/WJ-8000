@@ -30,9 +30,15 @@ public:
 
     explicit MiniKeyboard(DW8000Processor& proc) : proc_(proc) {}
     void paint(juce::Graphics&) override;
+    void mouseDown(const juce::MouseEvent&) override;
+    void mouseDrag(const juce::MouseEvent&) override;
+    void mouseUp(const juce::MouseEvent&) override;
 
 private:
     DW8000Processor& proc_;
+    int heldNote_ = -1;
+    int noteAt(juce::Point<float>) const;
+    void playNote(int note);
     static bool isBlackKey(int note) noexcept;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MiniKeyboard)
 };

@@ -63,6 +63,10 @@ public:
     // APVTS — one parameter per SysEx offset (offsets 0–50)
     juce::AudioProcessorValueTreeState apvts;
 
+    // Notes played with the mouse on the on-screen keyboard (merged into the
+    // MIDI input at the start of processBlock).
+    juce::MidiKeyboardState& getKeyboardState() { return keyboardState_; }
+
     // Expose engine for editor inspection
     DW8000Engine& getEngine() { return engine_; }
 
@@ -91,6 +95,7 @@ private:
 
     // Outgoing SysEx MIDI for hardware sync
     juce::MidiBuffer pendingMidi_;
+    juce::MidiKeyboardState keyboardState_;
     int midiChannel_ = 0;  // 0-based
 
     // Active note bitmask (notes 0-63 / 64-127)

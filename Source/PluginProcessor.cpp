@@ -198,6 +198,8 @@ void DW8000Processor::processBlock(juce::AudioBuffer<float>& buffer,
     juce::ScopedNoDenormals noDenormals;
     buffer.clear();
 
+    keyboardState_.processNextMidiBuffer(midiMessages, 0, buffer.getNumSamples(), true);
+
     // Scan MIDI: handle SysEx and maintain active-note bitmask for keyboard display
     for (const auto meta : midiMessages)
     {

@@ -1,5 +1,6 @@
 #pragma once
 #include <cmath>
+#include <cstdint>
 #include <algorithm>
 
 // NJM2069 VCF emulation — 4-pole transistor-ladder low-pass filter.

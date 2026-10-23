@@ -3,8 +3,13 @@ project(DW8000 VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "")
-set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "")
+if(APPLE)
+    set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "")
+    set(DW8000_FORMATS AU VST3 Standalone)
+else()
+    set(DW8000_FORMATS VST3 Standalone)
+endif()
 
 # ── JUCE ────────────────────────────────────────────────────────────────────
 add_subdirectory(JUCE)
@@ -53,7 +58,7 @@ juce_add_plugin(DW8000
     COMPANY_NAME             "PersonalStudy"
     PLUGIN_MANUFACTURER_CODE Ps00
     PLUGIN_CODE              Dw80
-    FORMATS                  AU VST3 Standalone
+    FORMATS                  ${DW8000_FORMATS}
     PRODUCT_NAME             "WJ-8000"
     IS_SYNTH                 TRUE
     NEEDS_MIDI_INPUT         TRUE
